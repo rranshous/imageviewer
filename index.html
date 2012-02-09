@@ -1,0 +1,72 @@
+<html>
+<head>
+
+    <script>
+        // trying jquery for the first time
+        var app = {};
+
+        // we need to:
+        //  fetch what images we need to queue up
+        //  show images to user
+        //  allow the user to classify images
+        //  show next image after classification
+
+        // TODO: figure out how to create callback's from normal functions
+        //       using jquery (aka get rid of classify callback)
+
+
+        // functions to tell the server our classification lvl of an image
+        var classify = function(lvl) {
+            // we are classifying the active image
+            // make the request to the server telling what we think
+
+            // make our request, alert if there is an error. other than
+            // getting an error we don't care what happens
+            $.ajax(url, {
+                url: './ImageDetails/',
+                cache: false,
+                type: 'post',
+                data: { 
+                    'user_id':app.user_id, 
+                    'image_id':app.active_image_id, 
+                    'level':lvl 
+                },
+                error: function(r,es,d) { alert('ERROR: '+es); }
+            });
+        };
+        var classify_callback = function(lvl) {
+            return function() { return classify(lvl); }
+        };
+
+        // classifications
+        // A = bad = 1
+        // S = minimum = 3
+        // d = good = 5
+        // f = great = 7
+        // g = best 9
+
+        // keypress handling code
+        var keypress_handlers = {
+            65: classify_callback(1), // A
+            83: classify_callback(3), // S
+            68: classify_callback(5), // D
+            70: classify_callback(7), // F
+            71: classify_callback(9)  // G
+        };
+
+        var handle_keypress = function(event) {
+            handler = keypress_handlers[event.which];
+            if(handler) {
+                return handler(event);
+            };
+        }
+
+
+
+    </script>
+
+</head>
+<body>
+
+</body>
+</html>
