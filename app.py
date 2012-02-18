@@ -1,8 +1,9 @@
 
 import web
+import os
 
 from lib.discovery import connect
-from lib.images import Image, o as io
+from lib.images import Images, o as io
 
 import logging
 import logging.config
@@ -77,7 +78,7 @@ class ImageDetails:
 
         # find the data on the next set of images
         try:
-            with connect(Image) as c:
+            with connect(Images) as c:
                 images = c.get_images_since(image_id=last_viewed_id,
                                             timestamp=None,
                                             limit=10,
@@ -128,8 +129,8 @@ class ImageData:
 
 # setup our web.py urls
 urls = {
-    '/data/.*': 'ImageData',
-    '/details/.*': 'ImageDetails'
+    r'/data/.*': 'ImageData',
+    r'/details/.*': 'ImageDetails'
 }
 application = web.application(urls, globals())
 
