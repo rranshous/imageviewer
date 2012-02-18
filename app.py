@@ -1,11 +1,21 @@
 
+import web
+
+from lib.discovery import connect
+from lib.images import Image, o as io
+
+import logging
+import logging.config
+here = os.path.dirname(os.path.abspath(__file__))
+logging_conf = os.path.join(here,'logging.conf')
+logging.config.fileConfig(logging_conf)
+log = logging.getLogger('server')
 
 ## we are going to need to:
 # track unique user's last viewed image id
 # return back to the browser the url's for the next set of images
 # keep track of user favorites
 # keep track of user dislikes
-
 
 # what name space are we using for our redis keys?
 NS = 'ImageViewer'
@@ -114,3 +124,14 @@ class ImageData:
         # return back the image data
         return image.data
 
+
+
+# setup our web.py urls
+urls = {
+    '/data/.*': 'ImageData',
+    '/details/.*': 'ImageDetails'
+}
+application = web.application(urls, globals())
+
+if __name__ == "__main__":
+    application.run()

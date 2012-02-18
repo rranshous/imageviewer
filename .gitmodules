@@ -1,0 +1,6 @@
+[submodule "lib/discovery"]
+	path = lib/discovery
+	url = git@github.com:rranshous/discovery.git
+[submodule "lib/images"]
+	path = lib/images
+	url = git@github.com:rranshous/images.git
