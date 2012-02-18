@@ -25,7 +25,7 @@
 
             // make our request, alert if there is an error. other than
             // getting an error we don't care what happens
-            $.ajax('./ImageDetails/', {
+            $.ajax('./details/', {
                 cache: false,
                 type: 'post',
                 data: { 
@@ -73,7 +73,7 @@
         // gets the next set of image ids from the server
         // and adds them to our local list
         var update_image_ids = function(callback) {
-            var url = '/ImageDetails/' + app.user_id_string;
+            var url = '/details/' + app.user_id_string;
             $.ajax(url, {
                 cache: false,
                 type: 'get',
@@ -98,7 +98,7 @@
             var image_id = app.image_ids.pop();
 
             // put the next image up
-            var url = '/ImageData/' + app.user_id_string + '/' + image_id;
+            var url = '/data/' + app.user_id_string + '/' + image_id;
             $('current_image').src = url;
 
             app.active_image_id = image_id;
