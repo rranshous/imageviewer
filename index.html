@@ -3,7 +3,11 @@
 
     <script>
         // trying jquery for the first time
-        var app = {};
+        var app = {
+            user_id_string: undefined,
+            image_ids: [],
+            active_image_id: undefined
+        };
 
         // we need to:
         //  fetch what images we need to queue up
@@ -14,7 +18,6 @@
         // TODO: figure out how to create callback's from normal functions
         //       using jquery (aka get rid of classify callback)
 
-
         // functions to tell the server our classification lvl of an image
         var classify = function(lvl) {
             // we are classifying the active image
@@ -22,12 +25,11 @@
 
             // make our request, alert if there is an error. other than
             // getting an error we don't care what happens
-            $.ajax(url, {
-                url: './ImageDetails/',
+            $.ajax('./ImageDetails/', {
                 cache: false,
                 type: 'post',
                 data: { 
-                    'user_id':app.user_id, 
+                    'user_id_string':app.user_id_string, 
                     'image_id':app.active_image_id, 
                     'level':lvl 
                 },
@@ -59,14 +61,98 @@
             if(handler) {
                 return handler(event);
             };
-        }
+        };
 
+        // set the user_id_string in local storage and in app NS
+        var set_user_id_string = function(user_id_string) {
+            app.user_id_string = user_id_string;
+            // update our local storage of the user_id_string
+            localstorage.setItem('user_id_string',user_id_string);
+        };
 
+        // gets the next set of image ids from the server
+        // and adds them to our local list
+        var update_image_ids = function(callback) {
+            var url = '/ImageDetails/' + app.user_id_string;
+            $.ajax(url, {
+                cache: false,
+                type: 'get',
+                error: function(r,es,d) { alert('ERROR: '+es); },
+                success: function(data) {
+                    console.log('image ids data: '+data);
 
+                    // data should be a comma deliminated string of image ids
+                    var new_image_ids = data.split(',');
+
+                    // update our local list
+                    app.image_ids += new_image_ids;
+
+                    // let the callback know it's done
+                    callback();
+                }
+            });
+        };
+
+        var next_slide = function() {
+            // get the next image id
+            var image_id = app.image_ids.pop();
+
+            // put the next image up
+            var url = '/ImageData/' + app.user_id_string + '/' + image_id;
+            $('current_image').src = url;
+
+            app.active_image_id = image_id;
+
+            // see if we need to get more image ids
+            if(app.image_ids.length < 3) {
+                update_image_ids();
+            };
+        };
+
+        // starting the show means setting up the initial
+        // image load
+        var start_show = function() {
+            $('current_image').show();
+            update_image_ids(next_slide);
+        };
+
+        // when the document is loaded start up the app
+        var start_app = function() {
+            // try and populate user_id_string from localstorage
+            app.user_id_string = localstorage.getItem('user_id_string');
+
+            // if we didn't get it than lets show the user_id_string form
+            if(!app.user_id_string) {
+                $('user_form').show();
+            }
+            // if we did get it than start the show
+            else {
+                start_show();
+            };
+        };
     </script>
+
+    <style>
+        #user_form {
+            display: none;
+        }
+        #image_container {
+            display: none;
+        }
+    </style>
 
 </head>
 <body>
-
+    <form id="user_form">
+        <label>Who are you?
+            <input type="text" name="user_id_string"/>
+        </label>
+        <button onClick="set_user_id_string(this.value); start_show();">
+            Set Name
+        </button>
+    </form>
+    <div id="image_container">
+        <img id="current_image"/>
+    </div>
 </body>
 </html>
