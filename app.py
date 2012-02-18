@@ -33,7 +33,7 @@ class ImageDetails:
 
         # votes are kept in sorted sets, one set per user
         # the weight will be the lvl
-        rc.zadd(key,data.get('level'),data.get('image_id'))
+        rc.zadd(key, data.get('image_id'), data.get('level'))
 
         # success !
         return '1'
