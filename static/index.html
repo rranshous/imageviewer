@@ -23,12 +23,13 @@
 
         // functions to tell the server our classification lvl of an image
         var classify = function(lvl) {
+            console.log({classify:lvl});
             // we are classifying the active image
             // make the request to the server telling what we think
 
             // make our request, alert if there is an error. other than
             // getting an error we don't care what happens
-            $.ajax('./details/', {
+            $.ajax('/details/', {
                 //cache: false,
                 type: 'post',
                 data: { 
@@ -36,7 +37,9 @@
                     'image_id':app.active_image_id, 
                     'level':lvl 
                 },
-                error: function(r,es,d) { alert('ERROR: '+es); }
+                error: function(r,es,d) { alert('ERROR: '+es); },
+                // if it succeeds go on
+                success: next_slide
             });
         };
         var classify_callback = function(lvl) {
@@ -52,19 +55,24 @@
 
         // keypress handling code
         var keypress_handlers = {
-            65: classify_callback(1), // A
-            83: classify_callback(3), // S
-            68: classify_callback(5), // D
-            70: classify_callback(7), // F
-            71: classify_callback(9)  // G
+            97: classify_callback(1), // A
+            115: classify_callback(3), // S
+            100: classify_callback(5), // D
+            102: classify_callback(7), // F
+            103: classify_callback(9)  // G
         };
 
         var handle_keypress = function(event) {
-            handler = keypress_handlers[event.which];
+            console.log({keypress:event});
+            var handler = keypress_handlers[event.which];
             if(handler) {
+                console.log({handler:handler});
                 return handler(event);
             };
         };
+
+        // attach our keypress handler to the body of the doc
+        $(document).keypress(handle_keypress);
 
         // set the user_id_string in local storage and in app NS
         var set_user_id_string = function(user_id_string) {
@@ -87,6 +95,16 @@
                 success: function(data) {
                     console.log('image ids data: '+data);
 
+                    // make sure we have more images to get
+                    if(data.length == 0) {
+                        console.log('no more images');
+                        alert('THE END!');
+                        if(callback) {
+                            callback(false);
+                        };
+                        return;
+                    };
+
                     // data should be a comma deliminated string of image ids
                     var new_image_ids = data.split(',');
 
@@ -96,7 +114,9 @@
                     console.log({image_ids:app.image_ids});
 
                     // let the callback know it's done
-                    callback();
+                    if(callback) {
+                        callback(true);
+                    };
                 }
             });
         };
@@ -151,6 +171,9 @@
                 start_show();
             };
         };
+
+        // start the app when the dom is ready
+        $(document).ready(start_app);
     </script>
 
     <style>
@@ -159,6 +182,10 @@
         }
         #image_container {
             display: none;
+        }
+        #current_image {
+            max-width: 100%;
+            max-height: 100%;
         }
     </style>
 

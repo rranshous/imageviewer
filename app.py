@@ -6,6 +6,7 @@ from lib.discovery import connect
 from lib.images import Images, o as io
 
 import redis
+import urlparse
 
 import logging
 import logging.config
@@ -33,18 +34,25 @@ class ImageDetails:
         """
 
         # get our post data
-        data = web.data()
+        #data = urlparse.parse_qs(web.data())
+        data = web.input()
 
         # make sure we have what we need
-        if not data.get('user_id'):
+        if not data.get('user_id_string'):
+            log.warning('ImageDetails POST: no user id')
             web.badrequest()
         if not data.get('image_id'):
+            log.warning('ImageDetails POST: no image id')
             web.badrequest()
         if not data.get('level'):
+            log.warning('ImageDetails POST: no level')
             web.badrequest()
 
         # time to vote
-        key = '%s:user_classifications:%s' % (NS, data.get('user_id'))
+        key = '%s:user_classifications:%s' % (NS, data.get('user_id_string'))
+
+        log.debug('setting user classification into key [%s] %s %s',
+                  key,data.get('image_id'),data.get('level'))
 
         # votes are kept in sorted sets, one set per user
         # the weight will be the lvl
@@ -80,7 +88,6 @@ class ImageDetails:
         # find the data on the next set of images
         try:
             with connect(Images) as c:
-                print 'requesting images: %s' % last_viewed_id
                 images = c.get_images_since(image_id=last_viewed_id,
                                             timestamp=None,
                                             limit=10,
@@ -153,7 +160,8 @@ class ImageData:
 # setup our web.py urls
 urls = (
     '/data/(.+?)/(.+?)/*', 'ImageData',
-    '/details/(.+)/*', 'ImageDetails'
+    '/details/(.+)/*', 'ImageDetails',
+    '/details/', 'ImageDetails' # post rating
 )
 application = web.application(urls, globals())
 
