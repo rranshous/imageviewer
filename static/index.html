@@ -1,7 +1,10 @@
 <html>
 <head>
 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.js"></script>
+
     <script>
+
         // trying jquery for the first time
         var app = {
             user_id_string: undefined,
@@ -26,7 +29,7 @@
             // make our request, alert if there is an error. other than
             // getting an error we don't care what happens
             $.ajax('./details/', {
-                cache: false,
+                //cache: false,
                 type: 'post',
                 data: { 
                     'user_id_string':app.user_id_string, 
@@ -66,17 +69,20 @@
         // set the user_id_string in local storage and in app NS
         var set_user_id_string = function(user_id_string) {
             app.user_id_string = user_id_string;
+            console.log('setting user id string: '+user_id_string);
             // update our local storage of the user_id_string
-            localstorage.setItem('user_id_string',user_id_string);
+            localStorage.setItem('user_id_string',user_id_string);
         };
 
         // gets the next set of image ids from the server
         // and adds them to our local list
         var update_image_ids = function(callback) {
             var url = '/details/' + app.user_id_string;
+            console.log('updating image ids: '+url);
             $.ajax(url, {
-                cache: false,
+                //cache: false,
                 type: 'get',
+                dataType: 'text',
                 error: function(r,es,d) { alert('ERROR: '+es); },
                 success: function(data) {
                     console.log('image ids data: '+data);
@@ -85,7 +91,9 @@
                     var new_image_ids = data.split(',');
 
                     // update our local list
-                    app.image_ids += new_image_ids;
+                    app.image_ids = app.image_ids.concat(new_image_ids);
+
+                    console.log({image_ids:app.image_ids});
 
                     // let the callback know it's done
                     callback();
@@ -94,17 +102,26 @@
         };
 
         var next_slide = function() {
+            // make sure we have image ids
+            if(app.image_ids.length < 1) {
+                console.log('no image ids, cant next slide');
+                return false;
+            }
+
             // get the next image id
-            var image_id = app.image_ids.pop();
+            var image_id = app.image_ids.splice(0,1)[0];
+
+            console.log('image id: '+image_id);
 
             // put the next image up
             var url = '/data/' + app.user_id_string + '/' + image_id;
-            $('current_image').src = url;
+            $('#current_image').attr('src', url);
 
             app.active_image_id = image_id;
 
             // see if we need to get more image ids
             if(app.image_ids.length < 3) {
+                console.log('not enough image ids, updating');
                 update_image_ids();
             };
         };
@@ -112,28 +129,32 @@
         // starting the show means setting up the initial
         // image load
         var start_show = function() {
-            $('current_image').show();
+            console.log('start_show');
+            $('#image_container').show();
             update_image_ids(next_slide);
         };
 
         // when the document is loaded start up the app
         var start_app = function() {
-            // try and populate user_id_string from localstorage
-            app.user_id_string = localstorage.getItem('user_id_string');
+            // try and populate user_id_string from localStorage
+            app.user_id_string = localStorage.getItem('user_id_string');
 
             // if we didn't get it than lets show the user_id_string form
             if(!app.user_id_string) {
-                $('user_form').show();
+                console.log('no user id string');
+                console.log({user_form:$('#user_form')});
+                $('#user_form').show();
             }
             // if we did get it than start the show
             else {
+                console.log('have user id string starting show');
                 start_show();
             };
         };
     </script>
 
     <style>
-        #user_form {
+        #who_container {
             display: none;
         }
         #image_container {
@@ -143,14 +164,14 @@
 
 </head>
 <body>
-    <form id="user_form">
+    <div id="who_container">
         <label>Who are you?
-            <input type="text" name="user_id_string"/>
+            <input type="text" id="user_id_string"/>
         </label>
-        <button onClick="set_user_id_string(this.value); start_show();">
+        <button onClick="set_user_id_string($('#user_id_string').val()); start_show(); false;">
             Set Name
         </button>
-    </form>
+    </div>
     <div id="image_container">
         <img id="current_image"/>
     </div>

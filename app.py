@@ -5,12 +5,16 @@ import os
 from lib.discovery import connect
 from lib.images import Images, o as io
 
+import redis
+
 import logging
 import logging.config
 here = os.path.dirname(os.path.abspath(__file__))
 logging_conf = os.path.join(here,'logging.conf')
 logging.config.fileConfig(logging_conf)
 log = logging.getLogger('server')
+
+rc = redis.Redis('localhost')
 
 ## we are going to need to:
 # track unique user's last viewed image id
@@ -49,7 +53,7 @@ class ImageDetails:
         # success !
         return '1'
 
-    def GET(self,user_id_string,last_viewed_id=None):
+    def GET(self,user_id_string):
         """
         return back the info for the next set of images
         expects to receive the user id string
@@ -58,27 +62,25 @@ class ImageDetails:
 
         # make sure we have a user string
         if not user_id_string:
-            log.warning('ImageDetails GET [%s] [%s]: no user id string' %
-                        (user_id_string,last_viewed_id))
+            log.warning('ImageDetails GET [%s]: no user id string' %
+                        user_id_string)
             web.badrequest()
 
-        # if they didn't provide the last viewed image find it
-        if not last_viewed_id:
-            key = '%s:user_details:%s' % (NS, user_id_string)
-            last_viewed_id = rc.hget(key, 'last_viewed_id')
-            if last_viewed_id:
-                last_viewed_id = int(last_viewed_id)
+        # find user's last viewed
+        key = '%s:user_details:%s' % (NS, user_id_string)
+        last_viewed_id = rc.hget(key, 'last_viewed_id')
+        if last_viewed_id:
+            # we get back a string
+            last_viewed_id = int(last_viewed_id)
 
         # if there is no last viewed, it's 0
-        if not last_viewed_id:
-            last_viewed_id = 0
         else:
-            # comes in from params / redis as string
-            last_viewed_id = int(last_viewed_id)
+            last_viewed_id = 0
 
         # find the data on the next set of images
         try:
             with connect(Images) as c:
+                print 'requesting images: %s' % last_viewed_id
                 images = c.get_images_since(image_id=last_viewed_id,
                                             timestamp=None,
                                             limit=10,
@@ -89,7 +91,13 @@ class ImageDetails:
             web.internalerror()
 
         # return back the id's of those images
-        return ','.join([i.id for i in images])
+        s = ','.join([str(i.id) for i in images])
+        log.debug('returning images: %s' % s)
+
+        # setup the header to be strait up text
+        web.header('Content-type','text')
+
+        return s
 
 
 class ImageData:
@@ -128,10 +136,10 @@ class ImageData:
 
 
 # setup our web.py urls
-urls = {
-    r'/data/.*': 'ImageData',
-    r'/details/.*': 'ImageDetails'
-}
+urls = (
+    '/data/(.+?)/(.+?)/*', 'ImageData',
+    '/details/(.+)/*', 'ImageDetails'
+)
 application = web.application(urls, globals())
 
 if __name__ == "__main__":
