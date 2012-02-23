@@ -4,6 +4,7 @@ import os
 
 from lib.discovery import connect
 from lib.images import Images, o as io
+from lib.revent import ReventClient
 
 import redis
 import urlparse
@@ -15,7 +16,14 @@ logging_conf = os.path.join(here,'logging.conf')
 logging.config.fileConfig(logging_conf)
 log = logging.getLogger('server')
 
-rc = redis.Redis('localhost')
+redis_host = '127.0.0.1'
+
+# our redis client for setting / getting info
+rc = redis.Redis(redis_host)
+
+# we are adding in the revent system for broadcasting
+# events, we are going to pick a unique
+revent = ReventClient(redis_host=redis_host)
 
 ## we are going to need to:
 # track unique user's last viewed image id
@@ -48,15 +56,35 @@ class ImageDetails:
             log.warning('ImageDetails POST: no level')
             web.badrequest()
 
+        try:
+            user_id_string = data.get('user_id_string')
+            image_id = int(data.get('image_id'))
+            level = float(data.get('level'))
+        except ValueError, ex:
+            log.exception('Could not cast as int')
+            web.badrequest()
+
         # time to vote
-        key = '%s:user_classifications:%s' % (NS, data.get('user_id_string'))
+        key = '%s:user_classifications:%s' % (NS, user_id_string)
 
         log.debug('setting user classification into key [%s] %s %s',
-                  key,data.get('image_id'),data.get('level'))
+                  key, image_id, level)
 
         # votes are kept in sorted sets, one set per user
         # the weight will be the lvl
-        rc.zadd(key, data.get('image_id'), data.get('level'))
+        rc.zadd(key, image_id, level)
+
+        # let the world know what we think
+        try:
+            revent.fire('imageviewer.user_classification', {
+                        'user_id_string':user_id_string,
+                        'image_id':image_id,
+                        'level':level})
+        except Exception, ex:
+            log.exception('Trying to fire imageviewer.user_classification' + \
+                          ' user_id=%s, image_id=%s, level=%s' % (user_id_string,
+                                                                  image_id,
+                                                                  level))
 
         # success !
         return '1'
@@ -150,7 +178,19 @@ class ImageData:
 
         # update the users's last viewed image to this one
         key = '%s:user_details:%s' % (NS, user_id_string)
-        last_viewed_id = rc.hincrby(key,'last_viewed_id',1)
+        rc.hset(key, 'last_viewed_id', image_id)
+
+        # broadcast what we're looking at
+        try:
+            revent.fire('imageviewer.image_data', {
+                        'user_id_string':user_id_string,
+                        'image_id':image_id})
+
+        except Exception, ex:
+            log.exception('Trying to fire imageviewer.user_classification' + \
+                          ' user_id=%s, image_id=%s, level=%s' % (user_id_string,
+                                                                  image_id,
+                                                                  level))
 
         # return back the image data
         return image.data
