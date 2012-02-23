@@ -107,15 +107,30 @@ class ImageData:
         expects the user id string, image id
         """
 
+        log.debug('getting image data: %s %s', user_id_string, image_id)
+
         # make sure we have a user string
         if not user_id_string:
             log.warning('ImageData GET [%s] [%s]: no user id string' %
                         (user_id_string,image_id))
             web.notfound() # return error
 
+        # make sure we have an image id
+        if not image_id:
+            log.warning('ImageData GET [%s] [%s]: no image id string' %
+                        (user_id_string,image_id))
+            web.notfound() # return error
+
+        try:
+            image_id = int(image_id)
+        except ValueError, ex:
+            log.warning('ImageData GET Error casting user id as int: %s',
+                        image_id)
+
         # get the image details
         try:
-            with connect(Image) as c:
+            log.debug('ImageData GET ing data: %s', image_id)
+            with connect(Images) as c:
                 image = c.get_image(image_id)
 
         except io.Exception, ex:
@@ -128,7 +143,7 @@ class ImageData:
 
         # update the users's last viewed image to this one
         key = '%s:user_details:%s' % (NS, user_id_string)
-        last_viewed_id = rc.hincr(key,'last_viewed_id',1)
+        last_viewed_id = rc.hincrby(key,'last_viewed_id',1)
 
         # return back the image data
         return image.data
