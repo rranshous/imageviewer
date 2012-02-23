@@ -4,3 +4,6 @@
 [submodule "lib/images"]
 	path = lib/images
 	url = git@github.com:rranshous/images.git
+[submodule "lib/revent"]
+	path = lib/revent
+	url = git@github.com:altalang/Revent.git
