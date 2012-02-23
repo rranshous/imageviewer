@@ -131,14 +131,6 @@
             // get the next image id
             var image_id = app.image_ids.splice(0,1)[0];
 
-            console.log('image id: '+image_id);
-
-            // put the next image up
-            var url = '/data/' + app.user_id_string + '/' + image_id;
-            $('#current_image').attr('src', url);
-
-            app.active_image_id = image_id;
-
             // see if we need to get more image ids
             if(app.image_ids.length < 3) {
                 console.log('not enough image ids, updating');
@@ -146,12 +138,69 @@
             };
         };
 
+        // updates the active slide
+        var show_slide = function(image_id) {
+            console.log('image id: '+image_id);
+
+            // put the next image up
+            var url = '/data/' + app.user_id_string + '/' + image_id;
+            $('#current_image').attr('src', url);
+
+            app.active_image_id = image_id;
+        };
+
         // starting the show means setting up the initial
         // image load
         var start_show = function() {
             console.log('start_show');
-            $('#image_container').show();
+            $('#who_container').hide();
+            $('#slideshow_image_container').show();
             update_image_ids(next_slide);
+        };
+
+        // get the user's favorite's from the server and show them
+        var show_favorite = function(lvl) {
+            console.log({show_favorite:lvl});
+
+            // cant be showing the who container / slideshow
+            $('#who_container').hide();
+            $('#slideshow_image_container').hide();
+
+            // get favorites from server
+            var url = '/favorites/'+app.user_id_string+'/'+lvl;
+            $.ajax(url, {
+                type: 'get',
+                dataType: 'json',
+                error: function(r,es,d) { alert('ERROR: '+es); },
+                success: function(data) {
+
+                    console.log({favorites:data});
+
+                    // grab / clear / show our image container
+                    var c = $('#favorites_container')
+                    c.html('\n');
+                    c.show();
+
+                    // generate the img html we need
+                    var html ='<span class="fav_lvl">'+lvl+':</span>';
+                    var img_ids;
+                    for(var k in data) {
+                        // for each level in the data
+                        img_ids = data[k];
+                        // add an image tag for each image
+                        for(var i = 0; i < img_ids.length; i++) {
+                            html = html + '<img class="fav" src="/data/';
+                            html = html + app.user_id_string;
+                            html = html + '/' + img_ids[i] + '"/>';
+                        };
+                    };
+
+                    // set our html into the container
+                    console.log({html:html});
+                    c.html(html);
+
+                }
+            });
         };
 
         // when the document is loaded start up the app
@@ -180,17 +229,41 @@
         #who_container {
             display: none;
         }
-        #image_container {
+        #slideshow_image_container {
             display: none;
         }
         #current_image {
-            max-width: 100%;
-            max-height: 100%;
+            max-width: 90%;
+            max-height: 90%;
+        }
+        #favorites_container {
+            height: 90%;
+            position: relative;
+        }
+        #favorites_container {
+        }
+        #favorites_container img {
+            max-width: 200px;
+            max-height: 100px;
         }
     </style>
 
 </head>
 <body>
+
+    <div id="header">
+        <span class="show_favorite 1"
+            onClick="show_favorite(1); return false;">Bad</span>
+        <span class="show_favorite 3"
+            onClick="show_favorite(3); return false;">Minimum</span>
+        <span class="show_favorite 5"
+            onClick="show_favorite(5); return false;">Good</span>
+        <span class="show_favorite 7"
+            onClick="show_favorite(7); return false;">Great</span>
+        <span class="show_favorite 9"
+            onClick="show_favorite(9); return false;">Best</span>
+    </div>
+
     <div id="who_container">
         <label>Who are you?
             <input type="text" id="user_id_string"/>
@@ -199,8 +272,15 @@
             Set Name
         </button>
     </div>
-    <div id="image_container">
+
+
+    <div id="slideshow_image_container">
         <img id="current_image"/>
     </div>
+
+    <div id="favorites_container">
+    </div>
+
+
 </body>
 </html>

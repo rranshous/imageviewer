@@ -1,13 +1,14 @@
 
 import web
 import os
+import redis
+import urlparse
+import time
+import json
 
 from lib.discovery import connect
 from lib.images import Images, o as io
 from lib.revent import ReventClient
-
-import redis
-import urlparse
 
 import logging
 import logging.config
@@ -182,9 +183,10 @@ class ImageData:
 
         # broadcast what we're looking at
         try:
-            revent.fire('imageviewer.image_data', {
+            revent.fire('imageviewer.image_view', {
                         'user_id_string':user_id_string,
-                        'image_id':image_id})
+                        'image_id':image_id,
+                        'time':time.time()})
 
         except Exception, ex:
             log.exception('Trying to fire imageviewer.user_classification' + \
@@ -196,12 +198,63 @@ class ImageData:
         return image.data
 
 
+class Favorites:
+    def GET(self, user_id_string, level=None):
+
+        # make sure we have a user string
+        if not user_id_string:
+            log.warning('Favorites GET [%s] [%s]: no user id string' %
+                        (user_id_string,level))
+            web.notfound() # return error
+
+        # we should get #'s
+        try:
+            user_id_string = int(user_id_string)
+            level = float(level)
+        except ValueError, ex:
+            log.warning('ImageData GET Error casting input: %s %s',
+                        user_id_string,level)
+
+        return_data = {}
+
+        # if we didn't get a lvl we are pulling all lvls
+        if level is None:
+            for i in xrange(10):
+                image_ids = self._get_level_favorites(user_id_string, i)
+                return_data[level] = image_ids
+        else:
+            image_ids = self._get_level_favorites(user_id_string, level)
+            return_data[level] = image_ids
+
+        # return our json
+        web.header('Content-type','text/json')
+        return json.dumps(return_data)
+
+
+    def _get_level_favorites(self, user_id_string, level=None):
+        """
+        return back all the image ids for the given level / user
+        """
+
+        key = '%s:user_classifications:%s' % (NS, user_id_string)
+
+        # get all the image ids for the given user w/in the level range
+        image_ids = rc.zrangebyscore(key, level, level)
+
+        log.debug('got level favorites [%s] [%s]: %s',
+                  user_id_string, level, image_ids)
+
+        return image_ids
+
+
 
 # setup our web.py urls
 urls = (
-    '/data/(.+?)/(.+?)/*', 'ImageData',
-    '/details/(.+)/*', 'ImageDetails',
-    '/details/', 'ImageDetails' # post rating
+    '/data/(.+?)/(.+?)', 'ImageData',
+    '/details/(.+)', 'ImageDetails',
+    '/details/*', 'ImageDetails', # post rating
+    '/favorites/(.+)/(.+)', 'Favorites', # w/ level
+    '/favorites/(.+)', 'Favorites' # w/o level
 )
 application = web.application(urls, globals())
 
